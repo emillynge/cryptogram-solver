@@ -17,8 +17,8 @@ def hash_word(word):
     MXM becomes 010, ASDF becomes 0123, AFAFA becomes 01010, etc.
     """
 
-    seen = {}
-    out = []
+    seen = dict()
+    out = list()
     i = 0
     for c in word:
         if c not in seen:
@@ -54,7 +54,7 @@ class Corpus(object):
         input_word_hash = hash_word(input_word)
         hash_matches = self._hash_dict[input_word_hash]
 
-        candidates = []
+        candidates = list()
         for word in hash_matches:
             for candidate_char, input_char in zip(word, input_word):
                 if input_char.islower() or input_char == "'" or candidate_char == "'":
@@ -78,7 +78,7 @@ class SubSolver(object):
             verbose: Print out intermediate steps.
         """
         self._corpus = Corpus(corpus_filename)
-        self._translation = {}
+        self._translation = dict()
         self.ciphertext = ciphertext.upper()
         self.verbose = verbose
 
