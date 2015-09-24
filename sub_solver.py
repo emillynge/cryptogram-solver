@@ -5,6 +5,7 @@
 import argparse
 import re
 import functools
+from copy import copy
 from collections import defaultdict
 
 __version__ = '0.0.1'
@@ -96,7 +97,8 @@ class SubSolver(object):
         """
 
         words = re.sub(r'[^\w ]+', '', self.ciphertext).split()
-        words.sort(key=lambda word: -len(word))
+
+        words.sort(key=lambda word: len(self._corpus._hash_dict[hash_word(word)]), reverse=True)
 
         err = NoSolutionException('Solve loop not started?')
         for max_unknown_word_count in range(0, max(3, len(words) / 10)):
@@ -170,14 +172,18 @@ class SubSolver(object):
         # might not be in the corpus if it's a proper noun.
 
         if unknown_word_count >= max_unknown_word_count:  # We cannot skip anymore words than we already have
+            remaining_words.append(cipher_word)     # Re-append cipher_word
             raise NoSolutionException(
                 'Reached limit of {0} skipped words. \n best translation:'.format(unknown_word_count,
                                                                                   current_translation))
-
-        return self._recursive_solve(remaining_words,
-                                     current_translation,
-                                     unknown_word_count + 1,
-                                     max_unknown_word_count)
+        try:
+            return self._recursive_solve(remaining_words,
+                                         current_translation,
+                                         unknown_word_count + 1,
+                                         max_unknown_word_count)
+        except NoSolutionException:
+            remaining_words.append(cipher_word)     # Re-append cipher_word
+            raise
 
     @staticmethod
     def _make_trans_from_dict(translations):
