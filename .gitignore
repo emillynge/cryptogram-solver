@@ -1,2 +1,4 @@
+/.idea
+/cryptogram-solver.iml
 *.pyc
 *.txt
