@@ -98,12 +98,18 @@ class SubSolver(object):
         words = re.sub(r'[^\w ]+', '', self.ciphertext).split()
         words.sort(key=lambda word: -len(word))
 
+        err = NoSolutionException('Solve loop not started?')
         for max_unknown_word_count in range(0, max(3, len(words) / 10)):
-            solution = self._recursive_solve(words, {}, 0,
-                                             max_unknown_word_count)
-            if solution:
+            try:
+                solution = self._recursive_solve(words, {}, 0,
+                                                 max_unknown_word_count)
                 self._translation = solution
-                break
+            except NoSolutionException as err:
+                if self.verbose:
+                    print(err)
+                pass
+
+        raise err
 
     def _recursive_solve(self, remaining_words, current_translation,
                          unknown_word_count, max_unknown_word_count):
@@ -163,7 +169,9 @@ class SubSolver(object):
         # might not be in the corpus if it's a proper noun.
 
         if unknown_word_count >= max_unknown_word_count:  # We cannot skip anymore words than we already have
-            raise NoSolutionException()
+            raise NoSolutionException(
+                'Reached limit of {0} skipped words. \n best translation:'.format(unknown_word_count,
+                                                                                  current_translation))
 
         return self._recursive_solve(remaining_words,
                                      current_translation,
