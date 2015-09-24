@@ -37,8 +37,7 @@ class Corpus(object):
 
         self._hash_dict = defaultdict(list)
         for word in word_list:
-            word_hash = hash_word(word)
-            self._hash_dict[word_hash].append(word)
+            self._hash_dict[hash_word(word)].append(word)
 
     def find_candidates(self, input_word):
         """Finds words in the corpus that could match the given word in
@@ -53,17 +52,15 @@ class Corpus(object):
         """
 
         input_word_hash = hash_word(input_word)
-        matches_hash = self._hash_dict.get(input_word_hash) or []
+        hash_matches = self._hash_dict[input_word_hash]
 
         candidates = []
-        for word in matches_hash:
-            invalid = False
-            for i in range(0, len(word)):
-                if input_word[i].islower() or input_word[i] == "'" or word[i] == "'":
-                    if input_word[i] != word[i]:
-                        invalid = True
-                        break
-            if not invalid:
+        for word in hash_matches:
+            for candidate_char, input_char in zip(word, input_word):
+                if input_char.islower() or input_char == "'" or candidate_char == "'":
+                    if input_char != candidate_char:
+                        break   # invalidate
+            else:   # run this block if no break occurred i.e word is not invalidated
                 candidates.append(word)
 
         return candidates
