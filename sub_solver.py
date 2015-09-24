@@ -186,12 +186,9 @@ class SubSolver(object):
         """Takes a translation dictionary and returns a string fit for use with
            string.translate()."""
 
-        from_str = ''
-        to_str = ''
-        for key in translations:
-            from_str += key
-            to_str += translations[key]
-        return str.maketrans(from_str, to_str)
+        from_str = translations.keys()
+        to_str = translations.values()
+        return str.maketrans(''.join(from_str), ''.join(to_str))
 
     def print_report(self):
         """Prints the result of the solve process."""
