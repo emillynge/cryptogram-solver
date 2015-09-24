@@ -6,6 +6,7 @@ import argparse
 import re
 import string
 import functools
+from collections import defaultdict
 
 __version__ = '0.0.1'
 
@@ -38,13 +39,10 @@ class Corpus(object):
         except IOError as err:
             print(err)
 
-        self._hash_dict = {}
+        self._hash_dict = defaultdict(list)
         for word in word_list:
             word_hash = hash_word(word)
-            if word_hash not in self._hash_dict:
-                self._hash_dict[word_hash] = [word]
-            else:
-                self._hash_dict[word_hash].append(word)
+            self._hash_dict[word_hash].append(word)
 
     def find_candidates(self, input_word):
         """Finds words in the corpus that could match the given word in
