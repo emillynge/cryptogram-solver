@@ -5,10 +5,12 @@
 import argparse
 import re
 import string
+import functools
 
 __version__ = '0.0.1'
 
 
+@functools.lru_cache()
 def hash_word(word):
     """Hashes a word into its similarity equivalent.
 
