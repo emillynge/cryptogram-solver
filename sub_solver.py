@@ -4,7 +4,6 @@
 
 import argparse
 import re
-import string
 import functools
 from collections import defaultdict
 
@@ -33,11 +32,8 @@ class Corpus(object):
     """Manages a corpus of words sorted by frequency descending."""
 
     def __init__(self, corpus_filename):
-        word_list = []
-        try:
-            word_list = open(corpus_filename).read().splitlines()
-        except IOError as err:
-            print(err)
+        with open(corpus_filename) as fp:
+            word_list = fp.read().splitlines()
 
         self._hash_dict = defaultdict(list)
         for word in word_list:
