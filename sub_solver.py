@@ -37,12 +37,11 @@ class Corpus(object):
     """Manages a corpus of words sorted by frequency descending."""
 
     def __init__(self, corpus_filename):
-        with open(corpus_filename) as fp:
-            word_list = fp.read().splitlines()
-
         self._hash_dict = defaultdict(list)
-        for word in word_list:
-            self._hash_dict[hash_word(word)].append(word)
+        with open(corpus_filename) as fp:
+            for word in fp:
+                _word = word.strip()
+                self._hash_dict[hash_word(_word)].append(_word)
 
     def find_candidates(self, input_word):
         """Finds words in the corpus that could match the given word in
@@ -83,7 +82,7 @@ class SubSolver(object):
             verbose: Print out intermediate steps.
         """
         self._corpus = Corpus(corpus_filename)
-        self._translation = dict()
+        self._translations = list()
         self.ciphertext = ciphertext.upper()
         self.verbose = verbose
 
@@ -103,13 +102,13 @@ class SubSolver(object):
         err = NoSolutionException('Solve loop not started?')
         for max_unknown_word_count in range(0, max(3, len(words) / 10)):
             try:
-                solution = self._recursive_solve(words, {}, 0,
+                solutions = self._recursive_solve(words, {}, 0,
                                                  max_unknown_word_count)
             except NoSolutionException as err:
                 if self.verbose:
                     print(err)
             else:
-                self._translation = solution
+                self._translations = solutions
                 break
         else:   # loop not breaked => no solution found. reraise latest error
             raise err
@@ -144,11 +143,11 @@ class SubSolver(object):
             print(self.ciphertext.translate(trans))
 
         if not remaining_words:  # remaining words is empty. we're done!
-            return current_translation
+            return [current_translation]
 
         cipher_word = remaining_words.pop()
         candidates = self._corpus.find_candidates(cipher_word.translate(trans))
-
+        solutions = list()
         for candidate in candidates:
             new_trans = dict(current_translation)
             translated_plaintext_chars = set(current_translation.values())
@@ -161,11 +160,15 @@ class SubSolver(object):
                 new_trans[cipher_char] = plaintext_char
             else:  # code is reached if no break occurred => good translation
                 try:
-                    return self._recursive_solve(remaining_words,
+                    solutions.extend(self._recursive_solve(remaining_words,
                                                  new_trans, unknown_word_count,
-                                                 max_unknown_word_count)
+                                                 max_unknown_word_count))
                 except NoSolutionException:
                     pass
+
+        if solutions:
+            remaining_words.append(cipher_word)
+            return solutions
 
         # If code is reached none of the candidates could produce valid result for the current cipher word
         # Try not using the candidates and skipping this word, because it
@@ -197,18 +200,30 @@ class SubSolver(object):
     def print_report(self):
         """Prints the result of the solve process."""
 
-        if not self._translation:
+        if not self._translations:
             print('Failed to translate ciphertext.')
             return
 
-        plaintext = self.ciphertext.translate(SubSolver._make_trans_from_dict(self._translation))
+        self._translations.sort(key=len, reverse=False)
+        print('Plaintext:')
+        for i, translation in enumerate(self._translations):
+            plaintext = self.ciphertext.translate(SubSolver._make_trans_from_dict(translation))
+            print(str(i) + ':\t' + plaintext)
+
+        if len(self._translations) > 1:
+            i = int(input('which solution so you want?: '))
+
         print('Ciphertext:')
         print(self.ciphertext, '\n')
+
+        translation = self._translations[i]
+        plaintext = self.ciphertext.translate(SubSolver._make_trans_from_dict(translation))
+
         print('Plaintext:')
         print(plaintext, '\n')
 
         print('Substitutions:')
-        items = [key + ' -> ' + word for key, word in self._translation.items()]
+        items = [key + ' -> ' + word for key, word in translation.items()]
         items.sort()
         i = 0
         for item in items:
@@ -227,20 +242,21 @@ def main():
         description='Solves substitution ciphers.')
     parser.add_argument('input_text',
                         help='A file containing the ciphertext.')
+
     parser.add_argument('-c', metavar='corpus', required=False,
                         default='corpus.txt',
                         help='Filename of the word corpus.')
     parser.add_argument('-v', action='store_true',
                         help='Verbose mode.')
 
+
     args = parser.parse_args()
 
     try:
         ciphertext = open(args.input_text).read().strip()
     except IOError as err:
-        print(err)
-        return
-
+        print('No file {0} found. using it as ciphertext'.format(args.input_text))
+        ciphertext = args.input_text
     solver = SubSolver(ciphertext, args.c, args.v)
     solver.solve()
     solver.print_report()
