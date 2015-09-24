@@ -10,6 +10,10 @@ from collections import defaultdict
 __version__ = '0.0.1'
 
 
+class NoSolutionException(Exception):
+    pass
+
+
 @functools.lru_cache()
 def hash_word(word):
     """Hashes a word into its similarity equivalent.
@@ -59,8 +63,8 @@ class Corpus(object):
             for candidate_char, input_char in zip(word, input_word):
                 if input_char.islower() or input_char == "'" or candidate_char == "'":
                     if input_char != candidate_char:
-                        break   # invalidate
-            else:   # run this block if no break occurred i.e word is not invalidated
+                        break  # invalidate
+            else:  # run this block if no break occurred i.e word is not invalidated
                 candidates.append(word)
 
         return candidates
@@ -130,49 +134,41 @@ class SubSolver(object):
         if self.verbose:
             print(self.ciphertext.translate(trans))
 
-        if len(remaining_words) == 0:
+        if not remaining_words:  # remaining words is empty. we're done!
             return current_translation
 
-        if unknown_word_count > max_unknown_word_count:
-            return None
-
-        cipher_word = remaining_words[0]
+        cipher_word = remaining_words.pop()
         candidates = self._corpus.find_candidates(cipher_word.translate(trans))
 
         for candidate in candidates:
             new_trans = dict(current_translation)
             translated_plaintext_chars = set(current_translation.values())
-            bad_translation = False
-            for i in range(0, len(candidate)):
-                cipher_char = cipher_word[i]
-                plaintext_char = candidate[i]
+            for cipher_char, plaintext_char in zip(cipher_word, candidate):
                 # This translation is bad if it tries to translate a ciphertext
                 # character we haven't seen to a plaintext character we already
                 # have a translation for.
                 if cipher_char not in current_translation and plaintext_char in translated_plaintext_chars:
-                    bad_translation = True
                     break
-                new_trans[cipher_word[i]] = candidate[i]
+                new_trans[cipher_char] = plaintext_char
+            else:  # code is reached if no break occurred => good translation
+                try:
+                    return self._recursive_solve(remaining_words,
+                                                 new_trans, unknown_word_count,
+                                                 max_unknown_word_count)
+                except NoSolutionException:
+                    pass
 
-            if bad_translation:
-                continue
-
-            result = self._recursive_solve(remaining_words[1:],
-                                           new_trans, unknown_word_count,
-                                           max_unknown_word_count)
-            if result:
-                return result
-
+        # If code is reached none of the candidates could produce valid result for the current cipher word
         # Try not using the candidates and skipping this word, because it
         # might not be in the corpus if it's a proper noun.
-        skip_word_solution = self._recursive_solve(remaining_words[1:],
-                                                   current_translation,
-                                                   unknown_word_count + 1,
-                                                   max_unknown_word_count)
-        if skip_word_solution:
-            return skip_word_solution
 
-        return None
+        if unknown_word_count >= max_unknown_word_count:  # We cannot skip anymore words than we already have
+            raise NoSolutionException()
+
+        return self._recursive_solve(remaining_words,
+                                     current_translation,
+                                     unknown_word_count + 1,
+                                     max_unknown_word_count)
 
     @staticmethod
     def _make_trans_from_dict(translations):
