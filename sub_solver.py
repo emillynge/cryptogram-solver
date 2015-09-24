@@ -103,13 +103,14 @@ class SubSolver(object):
             try:
                 solution = self._recursive_solve(words, {}, 0,
                                                  max_unknown_word_count)
-                self._translation = solution
             except NoSolutionException as err:
                 if self.verbose:
                     print(err)
-                pass
-
-        raise err
+            else:
+                self._translation = solution
+                break
+        else:   # loop not breaked => no solution found. reraise latest error
+            raise err
 
     def _recursive_solve(self, remaining_words, current_translation,
                          unknown_word_count, max_unknown_word_count):
